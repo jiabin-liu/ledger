@@ -1,0 +1,2 @@
+CREATE INDEX `idx_transactions_category_primary` ON `transactions` (`category_primary`);--> statement-breakpoint
+CREATE INDEX `idx_transactions_category_detailed` ON `transactions` (`category_detailed`);

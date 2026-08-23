@@ -1,0 +1,50 @@
+# Cloudflare Workers deployment config for Ledger.
+#
+# Deploy with:
+#
+#   pnpm run deploy
+#   # → vinext build && wrangler deploy --config wrangler.toml
+#
+# Fill in placeholders before the first production deploy. Secrets
+# (PLAID_CLIENT_ID, PLAID_SECRET, ACCESS_ALLOWED_EMAILS) are set with
+# `wrangler secret put` and must never be committed.
+#
+# Always pass `--config wrangler.toml`. The Vite Cloudflare plugin can merge
+# local placeholder D1 bindings into `dist/server/wrangler.json`; deploying
+# that merged file can create a duplicate `DB` binding.
+
+name = "ledger"
+# Optional if you use `wrangler login` and a single account; fill when needed.
+account_id = "<YOUR_CLOUDFLARE_ACCOUNT_ID>"
+main = "dist/server/index.js"
+compatibility_date = "2026-05-15"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = false
+
+[assets]
+directory = "dist/client"
+binding = "ASSETS"
+
+[images]
+binding = "IMAGES"
+
+[[routes]]
+pattern = "ledger.example.com"
+custom_domain = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ledger"
+database_id = "<YOUR_D1_DATABASE_ID>"
+migrations_dir = "drizzle"
+
+[observability]
+enabled = true
+
+[version_metadata]
+binding = "CF_VERSION_METADATA"
+
+[vars]
+PLAID_ENV = "sandbox"
+ACCESS_TEAM_DOMAIN = "https://<YOUR_TEAM>.cloudflareaccess.com"
+ACCESS_POLICY_AUD = "<YOUR_ACCESS_APPLICATION_AUD>"

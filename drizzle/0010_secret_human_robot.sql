@@ -1,0 +1,1 @@
+CREATE INDEX `idx_transactions_triage` ON `transactions` (`triage`);

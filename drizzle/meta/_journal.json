@@ -1,0 +1,83 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1785582910653,
+      "tag": "0000_many_deathstrike",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1785582926357,
+      "tag": "0001_strong_hercules",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1785587640099,
+      "tag": "0002_cold_demogoblin",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1785589266602,
+      "tag": "0003_wandering_betty_ross",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1785652435537,
+      "tag": "0004_broad_firebird",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1785653701985,
+      "tag": "0005_easy_iron_patriot",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1785665348339,
+      "tag": "0006_hot_captain_america",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1785669665606,
+      "tag": "0007_easy_pride",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1785671484571,
+      "tag": "0008_steep_yellowjacket",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1785797399204,
+      "tag": "0009_omniscient_magus",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1785800545791,
+      "tag": "0010_secret_human_robot",
+      "breakpoints": true
+    }
+  ]
+}

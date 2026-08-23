@@ -1,0 +1,1 @@
+ALTER TABLE `transactions` ADD `triage` text DEFAULT 'untriaged' NOT NULL;
