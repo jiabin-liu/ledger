@@ -122,10 +122,12 @@ function updateDraft(
 }
 
 export function BenefitsPanel({
+  active,
   creditAccounts,
   initialBundle,
   onDetailHistoryChange,
 }: {
+  active: boolean;
   creditAccounts: CreditAccount[];
   initialBundle: Bundle;
   onDetailHistoryChange?: (active: boolean) => void;
@@ -518,7 +520,7 @@ export function BenefitsPanel({
     : null;
 
   return (
-    <>
+    <div hidden={!active}>
       {templateOverlay && (
         <section ref={detailSheetRef} className="detail-panel" aria-labelledby="benefits-templates-title">
           <div className="account-detail detail-panel-inner benefits-layout">
@@ -873,7 +875,7 @@ export function BenefitsPanel({
         </div>
       )}
       </section>
-    </>
+    </div>
   );
 }
 

@@ -42,6 +42,11 @@ function txMonthFilterValue(raw: string | undefined) {
   return value;
 }
 
+/** Escapes SQLite LIKE wildcards so a search term is matched literally. */
+function escapeLikePattern(value: string) {
+  return value.replace(/[\\%_]/g, (char) => `\\${char}`);
+}
+
 function nextMonthStart(year: number, month: number) {
   if (month === 12) return `${year + 1}-01-01`;
   return `${year}-${String(month + 1).padStart(2, "0")}-01`;
@@ -60,13 +65,14 @@ export default async function Home({
     categoryDetailed?: string;
     year?: string;
     month?: string;
+    search?: string;
   }>;
 }) {
   const owner = await getLedgerOwner();
   const email = owner?.email ?? null;
   const deployVersion = getDeployVersion();
   const params = await searchParams;
-  const activeTab = ["accounts", "transactions", "benefits"].includes(params.tab ?? "")
+  const activeTab = ["accounts", "transactions", "benefits", "insights"].includes(params.tab ?? "")
     ? params.tab!
     : "accounts";
   const requestedPage = Number.parseInt(params.page ?? "1", 10);
@@ -79,6 +85,7 @@ export default async function Home({
   // `year` is shared URL key: transactions date filter when tab=transactions; Benefits year when tab=benefits.
   const selectedTxYear = activeTab === "transactions" ? txYearFilterValue(params.year) : "all";
   const selectedTxMonth = activeTab === "transactions" ? txMonthFilterValue(params.month) : "all";
+  const selectedSearch = activeTab === "transactions" ? (params.search?.trim() ?? "") : "";
   const requestedBenefitsYear = Number.parseInt(params.year ?? "", 10);
   const benefitsYear = activeTab === "benefits" && Number.isFinite(requestedBenefitsYear)
     ? requestedBenefitsYear
@@ -116,6 +123,9 @@ export default async function Home({
         : selectedTxMonth !== "all"
           ? sql`substr(${transactions.date}, 6, 2) = ${selectedTxMonth}`
           : undefined,
+    selectedSearch
+      ? sql`(${transactions.name} LIKE ${`%${escapeLikePattern(selectedSearch)}%`} ESCAPE '\\' OR ${transactions.merchantName} LIKE ${`%${escapeLikePattern(selectedSearch)}%`} ESCAPE '\\')`
+      : undefined,
   ].filter((part): part is NonNullable<typeof part> => Boolean(part));
   const transactionFilter = filterParts.length > 0 ? and(...filterParts) : undefined;
 
@@ -173,7 +183,8 @@ export default async function Home({
         try {
           await ensurePeriodsForYear(benefitsYear);
           return await listBenefitBundle(benefitsYear);
-        } catch {
+        } catch (error) {
+          console.error("Failed to load benefits bundle", error);
           return { ...emptyBenefits, year: benefitsYear };
         }
       })(),
@@ -238,12 +249,14 @@ export default async function Home({
         selectedCategoryDetailed={selectedCategoryDetailed}
         selectedTxYear={selectedTxYear}
         selectedTxMonth={selectedTxMonth}
+        selectedSearch={selectedSearch}
         viewerEmail={email}
         deployVersion={deployVersion}
         benefitsBundle={benefitsBundle}
       />
     );
-  } catch {
+  } catch (error) {
+    console.error("Failed to load dashboard data", error);
     return (
       <TransactionDashboard
         activeTab={activeTab}
@@ -262,6 +275,7 @@ export default async function Home({
         selectedCategoryDetailed={selectedCategoryDetailed}
         selectedTxYear={selectedTxYear}
         selectedTxMonth={selectedTxMonth}
+        selectedSearch={selectedSearch}
         viewerEmail={email}
         deployVersion={deployVersion}
         databasePending

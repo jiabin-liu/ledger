@@ -2,7 +2,9 @@
 
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode, type RefObject } from "react";
 import { flushSync } from "react-dom";
-import { ArrowLeft, Check, ChevronDown, Circle, CreditCard, Gift, GripVertical, HelpCircle, LayoutGrid, Link2, List, Plus, RefreshCw, StickyNote } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, Circle, CreditCard, Gift, GripVertical, HelpCircle, LayoutGrid, Link2, List, PieChart, Plus, RefreshCw, Search, StickyNote, X } from "lucide-react";
+import { InsightsPanel } from "./insights-panel";
+import { CategoryEditor } from "./category-editor";
 import {
   DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent,
 } from "@dnd-kit/core";
@@ -122,6 +124,12 @@ function transactionAccountLine(transaction: {
   return parts.join(" · ");
 }
 
+function categoryBadgeLabel(value: string | null) {
+  const formatted = formatCategory(value);
+  if (!formatted) return null;
+  return formatted.replace(/bw/g, (char) => char.toUpperCase());
+}
+
 function formatCategory(value: string | null) {
   return value?.replaceAll("_", " ") ?? null;
 }
@@ -154,7 +162,7 @@ export function TransactionDashboard({
   activeTab, transactions, totalTransactions, page, pageSize, accounts, institutions, categoryOptions,
   transactionYearOptions,
   selectedInstitution, selectedAccountId, selectedTriage, selectedCategoryPrimary, selectedCategoryDetailed,
-  selectedTxYear, selectedTxMonth,
+  selectedTxYear, selectedTxMonth, selectedSearch,
   viewerEmail, deployVersion,
   databasePending = false,
   benefitsBundle,
@@ -175,6 +183,7 @@ export function TransactionDashboard({
   selectedCategoryDetailed: string;
   selectedTxYear: string;
   selectedTxMonth: string;
+  selectedSearch: string;
   viewerEmail: string | null;
   deployVersion: { id: string; tag: string | null; timestamp: string | null } | null;
   databasePending?: boolean;
@@ -193,7 +202,7 @@ export function TransactionDashboard({
     ...transaction,
     triage: normalizeTriage((transaction as Transaction & { triage?: string | null }).triage),
   })));
-  const transactionPatchesRef = useRef(new Map<string, { note?: string | null; triage?: TriageStatus }>());
+  const transactionPatchesRef = useRef(new Map<string, { note?: string | null; triage?: TriageStatus; categoryPrimary?: string | null; categoryDetailed?: string | null }>());
   const [noteDraft, setNoteDraft] = useState("");
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [savingNote, setSavingNote] = useState(false);
@@ -208,6 +217,8 @@ export function TransactionDashboard({
   const [orderedAccounts, setOrderedAccounts] = useState(accounts);
   const [expandedInstitutions, setExpandedInstitutions] = useState<Set<string>>(new Set());
   const [benefitsDetailOpen, setBenefitsDetailOpen] = useState(false);
+  const [searchDraft, setSearchDraft] = useState(selectedSearch);
+  const searchDebounceRef = useRef<number | null>(null);
   const detailSheetRef = useRef<HTMLElement | null>(null);
   const appScrollRef = useRef<HTMLDivElement | null>(null);
   const focusedDetailFieldRef = useRef<HTMLElement | null>(null);
@@ -267,7 +278,7 @@ export function TransactionDashboard({
   useEffect(() => {
     const onPopState = (event: PopStateEvent) => {
       const params = new URLSearchParams(window.location.search);
-      const nextTab = ["accounts", "transactions", "benefits"].includes(params.get("tab") ?? "")
+      const nextTab = ["accounts", "transactions", "benefits", "insights"].includes(params.get("tab") ?? "")
         ? params.get("tab")!
         : "accounts";
       setTab(nextTab);
@@ -290,6 +301,39 @@ export function TransactionDashboard({
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
+
+  useEffect(() => {
+    // Mobile Safari/Chrome can restore this page from the back-forward cache (bfcache) on
+    // "refresh" instead of re-running the server component, showing whatever state (accounts,
+    // benefit assignments, etc.) existed when the page was first loaded. Force a real reload
+    // so a stale snapshot never masquerades as fresh data.
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) window.location.reload();
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, []);
+
+  useEffect(() => {
+    // Quietly ask Plaid for anything new each time the app is opened, without requiring
+    // the user to remember to tap "Sync". The server skips any institution it already
+    // refreshed within the last 24h, so repeated opens in the same day are a no-op.
+    if (databasePending) return;
+    let cancelled = false;
+    fetch("/api/plaid/sync?auto=1", { method: "POST" })
+      .then((response) => response.json())
+      .then((payload: { added?: number }) => {
+        if (cancelled || !payload.added) return;
+        setStatus(`Imported ${payload.added} new transaction${payload.added === 1 ? "" : "s"}.`);
+        window.location.reload();
+      })
+      .catch(() => {
+        // Silent: this is a background refresh, not a user-initiated action.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [databasePending]);
 
   useEffect(() => {
     const patches = transactionPatchesRef.current;
@@ -478,6 +522,8 @@ export function TransactionDashboard({
     ? (selectedTransaction ? "Transaction" : "Transactions")
     : tab === "benefits"
       ? "Benefits"
+      : tab === "insights"
+        ? "Spending"
       : selectedAccount
         ? "Account"
         : "Accounts";
@@ -543,6 +589,7 @@ export function TransactionDashboard({
     if (selectedCategoryDetailed !== "all") query.set("categoryDetailed", selectedCategoryDetailed);
     if (selectedTxYear !== "all") query.set("year", selectedTxYear);
     if (selectedTxMonth !== "all") query.set("month", selectedTxMonth);
+    if (selectedSearch) query.set("search", selectedSearch);
     return `/?${query.toString()}`;
   };
   const changeTransactionFilter = ({
@@ -553,6 +600,7 @@ export function TransactionDashboard({
     categoryDetailed = selectedCategoryDetailed,
     txYear = selectedTxYear,
     txMonth = selectedTxMonth,
+    search = selectedSearch,
   }: {
     institutionId?: string;
     accountId?: string;
@@ -561,6 +609,7 @@ export function TransactionDashboard({
     categoryDetailed?: string;
     txYear?: string;
     txMonth?: string;
+    search?: string;
   } = {}) => {
     const query = new URLSearchParams({ tab: "transactions", page: "1" });
     if (institutionId !== "all") query.set("institution", institutionId);
@@ -570,8 +619,32 @@ export function TransactionDashboard({
     if (categoryDetailed !== "all") query.set("categoryDetailed", categoryDetailed);
     if (txYear !== "all") query.set("year", txYear);
     if (txMonth !== "all") query.set("month", txMonth);
+    if (search) query.set("search", search);
     window.location.assign(`/?${query.toString()}`);
   };
+  const clearSearchDebounce = () => {
+    if (searchDebounceRef.current != null) {
+      window.clearTimeout(searchDebounceRef.current);
+      searchDebounceRef.current = null;
+    }
+  };
+  const submitSearch = (value: string) => {
+    clearSearchDebounce();
+    const trimmed = value.trim();
+    if (trimmed === selectedSearch) return;
+    changeTransactionFilter({ search: trimmed });
+  };
+  const handleSearchInput = (value: string) => {
+    setSearchDraft(value);
+    clearSearchDebounce();
+    searchDebounceRef.current = window.setTimeout(() => submitSearch(value), 500);
+  };
+  useEffect(() => {
+    // Switching tabs is a client-side pushState, not a reload, so a pending debounced
+    // search (which navigates via window.location.assign) must not fire after the user
+    // has already moved off the Transactions tab.
+    if (tab !== "transactions") clearSearchDebounce();
+  }, [tab]);
   const toggleInstitution = (institution: string) => setExpandedInstitutions((current) => {
     const next = new Set(current);
     if (next.has(institution)) next.delete(institution); else next.add(institution);
@@ -755,7 +828,7 @@ export function TransactionDashboard({
   };
   const patchTransactionLocally = (
     transactionId: string,
-    patch: { note?: string | null; triage?: TriageStatus },
+    patch: { note?: string | null; triage?: TriageStatus; categoryPrimary?: string | null; categoryDetailed?: string | null },
   ) => {
     const current = transactionPatchesRef.current.get(transactionId) ?? {};
     transactionPatchesRef.current.set(transactionId, { ...current, ...patch });
@@ -868,7 +941,7 @@ export function TransactionDashboard({
       setSavingDisplayMask(false);
     }
   };
-  const goToTab = (nextTab: "accounts" | "transactions" | "benefits") => {
+  const goToTab = (nextTab: "accounts" | "transactions" | "benefits" | "insights") => {
     if (nextTab === tab && !selectedAccount && !selectedTransaction && !benefitsDetailOpen) return;
     blurActiveDetailField();
     if (selectedTransaction) flushDetailNote();
@@ -890,6 +963,7 @@ export function TransactionDashboard({
       if (selectedCategoryDetailed !== "all") query.set("categoryDetailed", selectedCategoryDetailed);
       if (selectedTxYear !== "all") query.set("year", selectedTxYear);
       if (selectedTxMonth !== "all") query.set("month", selectedTxMonth);
+      if (selectedSearch) query.set("search", selectedSearch);
     }
     const url = `/?${query.toString()}`;
     const proto = History.prototype;
@@ -1185,7 +1259,20 @@ export function TransactionDashboard({
             <div><dt>Name</dt><dd>{dash(selectedTransaction.name)}</dd></div>
             <div><dt>Merchant</dt><dd>{dash(selectedTransaction.merchantName)}</dd></div>
             <div><dt>Original description</dt><dd>{dash(selectedTransaction.originalDescription)}</dd></div>
-            <div><dt>Category</dt><dd>{dash(formatCategory(selectedTransaction.categoryPrimary))}</dd></div>
+            <div>
+              <dt>Category</dt>
+              <dd>
+                <CategoryEditor
+                  transactionId={selectedTransaction.transactionId}
+                  transactionName={selectedTransaction.name}
+                  categoryPrimary={selectedTransaction.categoryPrimary}
+                  onSaved={(transactionId, categoryPrimary) => patchTransactionLocally(transactionId, { categoryPrimary, categoryDetailed: null })}
+                  onBatchApplied={(transactionIds, categoryPrimary) => {
+                    transactionIds.forEach((id) => patchTransactionLocally(id, { categoryPrimary, categoryDetailed: null }));
+                  }}
+                />
+              </dd>
+            </div>
             <div><dt>Category detail</dt><dd>{dash(formatCategory(selectedTransaction.categoryDetailed))}</dd></div>
             <div><dt>Payment channel</dt><dd>{dash(selectedTransaction.paymentChannel)}</dd></div>
             <div>
@@ -1210,6 +1297,35 @@ export function TransactionDashboard({
           aria-hidden={Boolean(selectedTransaction)}
         >
           <div className="section-heading"><h2>Recent activity</h2><p>{pageStart.toLocaleString()}–{pageEnd.toLocaleString()} of {totalTransactions.toLocaleString()}</p></div>
+          <div className="transaction-search-field">
+            <Search aria-hidden="true" />
+            <input
+              type="search"
+              inputMode="search"
+              enterKeyHint="search"
+              placeholder="Search transactions"
+              aria-label="Search transactions by name"
+              value={searchDraft}
+              onChange={(event) => handleSearchInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") submitSearch(searchDraft);
+              }}
+              onBlur={() => submitSearch(searchDraft)}
+            />
+            {searchDraft && (
+              <button
+                type="button"
+                className="transaction-search-clear"
+                aria-label="Clear search"
+                onClick={() => {
+                  setSearchDraft("");
+                  submitSearch("");
+                }}
+              >
+                <X aria-hidden="true" />
+              </button>
+            )}
+          </div>
           <div className="transaction-filters">
             <div className="transaction-filter-field">
               <span>Year</span>
@@ -1312,6 +1428,7 @@ export function TransactionDashboard({
               && selectedCategoryDetailed === "all"
               && selectedTxYear === "all"
               && selectedTxMonth === "all"
+              && !selectedSearch
               ? <Empty title="No transactions yet" copy="Connect an institution and sync it to begin your ledger." />
               : <div className="transaction-empty-filter">No matching transactions</div>
           ) : <div className="transaction-list">
@@ -1331,6 +1448,7 @@ export function TransactionDashboard({
                     pendingListNoteFocusRef.current = true;
                     focusListNoteInput();
                   }}
+                  onOpenTap={() => handleTransactionRowClick(transaction, editing)}
                 >
                   <div className="transaction-row-main">
                     <button
@@ -1358,6 +1476,10 @@ export function TransactionDashboard({
                           {transaction.pending && <span className="pending-badge">Pending</span>}
                         </div>
                         <p className="transaction-account-line">{transactionAccountLine(transaction)}</p>
+                        {categoryBadgeLabel(transaction.categoryPrimary) && (
+                          <span className="transaction-category-badge">{categoryBadgeLabel(transaction.categoryPrimary)}</span>
+                        )}
+
                       </div>
                       <strong className={transaction.amountMilliunits < 0 ? "amount credit" : "amount"}>
                         {transaction.amountMilliunits < 0 ? "+" : "−"}
@@ -1417,22 +1539,24 @@ export function TransactionDashboard({
         </section>
       )}
 
-      {tab === "benefits" && (
-        <BenefitsPanel
-          creditAccounts={creditAccounts}
-          initialBundle={benefitsBundle}
-          onDetailHistoryChange={(active) => {
-            benefitsDetailHistoryRef.current = active;
-            if (active) freezeBodyForDetail();
-            setBenefitsDetailOpen(active);
-          }}
-        />
-      )}
+      <BenefitsPanel
+        active={tab === "benefits"}
+        creditAccounts={creditAccounts}
+        initialBundle={benefitsBundle}
+        onDetailHistoryChange={(active) => {
+          benefitsDetailHistoryRef.current = active;
+          if (active) freezeBodyForDetail();
+          setBenefitsDetailOpen(active);
+        }}
+      />
+
+      {tab === "insights" && <InsightsPanel />}
       </div>
 
       <nav className="bottom-tabs" aria-label="Ledger sections">
         <button className={tab === "accounts" ? "bottom-tab active" : "bottom-tab"} type="button" onClick={() => goToTab("accounts")} aria-label="Accounts" title="Accounts"><CreditCard aria-hidden="true" /></button>
         <button className={tab === "transactions" ? "bottom-tab active" : "bottom-tab"} type="button" onClick={() => goToTab("transactions")} aria-label="Transactions" title="Transactions"><List aria-hidden="true" /></button>
+        <button className={tab === "insights" ? "bottom-tab active" : "bottom-tab"} type="button" onClick={() => goToTab("insights")} aria-label="Spending" title="Spending"><PieChart aria-hidden="true" /></button>
         <button className={tab === "benefits" ? "bottom-tab active" : "bottom-tab"} type="button" onClick={() => goToTab("benefits")} aria-label="Benefits" title="Benefits"><Gift aria-hidden="true" /></button>
       </nav>
     </main>
@@ -1537,6 +1661,7 @@ function SwipeableTransactionRow({
   onTriage,
   onLongPress,
   onLongPressEnd,
+  onOpenTap,
   children,
 }: {
   triage: TriageStatus;
@@ -1544,6 +1669,7 @@ function SwipeableTransactionRow({
   onTriage: (triage: TriageStatus) => void;
   onLongPress?: () => void;
   onLongPressEnd?: () => void;
+  onOpenTap?: () => void;
   children: ReactNode;
 }) {
   const [offset, setOffset] = useState(0);
@@ -1555,6 +1681,8 @@ function SwipeableTransactionRow({
   const axisRef = useRef<"pending" | "h" | "v" | null>(null);
   const draggedRef = useRef(false);
   const longPressFiredRef = useRef(false);
+  const tapConsumedRef = useRef(false);
+  const downOnOpenTargetRef = useRef(false);
   const longPressTimerRef = useRef<number | null>(null);
   const activePointerRef = useRef<number | null>(null);
   const threshold = 72;
@@ -1628,6 +1756,10 @@ function SwipeableTransactionRow({
         longPressFiredRef.current = false;
         activePointerRef.current = event.pointerId;
         clearLongPressTimer();
+        // Record the hit-tested target *before* setPointerCapture below causes
+        // subsequent events (including this gesture's pointerup) to report
+        // their target as this row instead of the actual element under the pointer.
+        downOnOpenTargetRef.current = Boolean((event.target as HTMLElement | null)?.closest(".transaction-row-open"));
         if (onLongPress) {
           longPressTimerRef.current = window.setTimeout(() => {
             if (axisRef.current === "h" || axisRef.current === "v") return;
@@ -1673,6 +1805,11 @@ function SwipeableTransactionRow({
         setOffset(Math.max(-maxSwipe, Math.min(maxSwipe, dx)));
       }}
       onPointerUp={(event) => {
+        try {
+          (event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId);
+        } catch {
+          // ignore
+        }
         clearLongPressTimer();
         if (longPressFiredRef.current) {
           finishLongPress();
@@ -1682,8 +1819,19 @@ function SwipeableTransactionRow({
           reset();
           return;
         }
-        if (axisRef.current === "h" && draggedRef.current) commit();
-        else reset();
+        if (axisRef.current === "h" && draggedRef.current) {
+          commit();
+        } else {
+          // Fire the open action here rather than relying on the browser's
+          // separately-synthesized click on the nested button — that click is
+          // unreliable (sometimes never fires) once this row has taken pointer
+          // capture, and event.target is retargeted to this row by then anyway.
+          if (onOpenTap && axisRef.current === "pending" && !draggedRef.current && downOnOpenTargetRef.current) {
+            tapConsumedRef.current = true;
+            onOpenTap();
+          }
+          reset();
+        }
       }}
       onPointerCancel={() => {
         clearLongPressTimer();
@@ -1694,6 +1842,12 @@ function SwipeableTransactionRow({
         reset();
       }}
       onClickCapture={(event) => {
+        if (tapConsumedRef.current) {
+          event.preventDefault();
+          event.stopPropagation();
+          tapConsumedRef.current = false;
+          return;
+        }
         if (!draggedRef.current && !longPressFiredRef.current) return;
         event.preventDefault();
         event.stopPropagation();
