@@ -72,7 +72,7 @@ export default async function Home({
   const email = owner?.email ?? null;
   const deployVersion = getDeployVersion();
   const params = await searchParams;
-  const activeTab = ["accounts", "transactions", "benefits", "insights"].includes(params.tab ?? "")
+  const activeTab = ["accounts", "transactions", "benefits", "insights", "rewards"].includes(params.tab ?? "")
     ? params.tab!
     : "accounts";
   const requestedPage = Number.parseInt(params.page ?? "1", 10);

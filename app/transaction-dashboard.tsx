@@ -2,8 +2,9 @@
 
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode, type RefObject } from "react";
 import { flushSync } from "react-dom";
-import { ArrowLeft, Check, ChevronDown, Circle, CreditCard, Gift, GripVertical, HelpCircle, LayoutGrid, Link2, List, PieChart, Plus, RefreshCw, Search, StickyNote, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, Circle, Coins, CreditCard, Gift, GripVertical, HelpCircle, LayoutGrid, Link2, List, PieChart, Plus, RefreshCw, Search, StickyNote, X } from "lucide-react";
 import { InsightsPanel } from "./insights-panel";
+import { RewardsPanel } from "./rewards-panel";
 import { CategoryEditor } from "./category-editor";
 import {
   DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent,
@@ -278,7 +279,7 @@ export function TransactionDashboard({
   useEffect(() => {
     const onPopState = (event: PopStateEvent) => {
       const params = new URLSearchParams(window.location.search);
-      const nextTab = ["accounts", "transactions", "benefits", "insights"].includes(params.get("tab") ?? "")
+      const nextTab = ["accounts", "transactions", "benefits", "insights", "rewards"].includes(params.get("tab") ?? "")
         ? params.get("tab")!
         : "accounts";
       setTab(nextTab);
@@ -524,6 +525,8 @@ export function TransactionDashboard({
       ? "Benefits"
       : tab === "insights"
         ? "Spending"
+        : tab === "rewards"
+          ? "Rewards"
       : selectedAccount
         ? "Account"
         : "Accounts";
@@ -941,7 +944,7 @@ export function TransactionDashboard({
       setSavingDisplayMask(false);
     }
   };
-  const goToTab = (nextTab: "accounts" | "transactions" | "benefits" | "insights") => {
+  const goToTab = (nextTab: "accounts" | "transactions" | "benefits" | "insights" | "rewards") => {
     if (nextTab === tab && !selectedAccount && !selectedTransaction && !benefitsDetailOpen) return;
     blurActiveDetailField();
     if (selectedTransaction) flushDetailNote();
@@ -1551,6 +1554,7 @@ export function TransactionDashboard({
       />
 
       {tab === "insights" && <InsightsPanel />}
+      {tab === "rewards" && <RewardsPanel />}
       </div>
 
       <nav className="bottom-tabs" aria-label="Ledger sections">
@@ -1558,6 +1562,7 @@ export function TransactionDashboard({
         <button className={tab === "transactions" ? "bottom-tab active" : "bottom-tab"} type="button" onClick={() => goToTab("transactions")} aria-label="Transactions" title="Transactions"><List aria-hidden="true" /></button>
         <button className={tab === "insights" ? "bottom-tab active" : "bottom-tab"} type="button" onClick={() => goToTab("insights")} aria-label="Spending" title="Spending"><PieChart aria-hidden="true" /></button>
         <button className={tab === "benefits" ? "bottom-tab active" : "bottom-tab"} type="button" onClick={() => goToTab("benefits")} aria-label="Benefits" title="Benefits"><Gift aria-hidden="true" /></button>
+        <button className={tab === "rewards" ? "bottom-tab active" : "bottom-tab"} type="button" onClick={() => goToTab("rewards")} aria-label="Rewards" title="Rewards"><Coins aria-hidden="true" /></button>
       </nav>
     </main>
   );

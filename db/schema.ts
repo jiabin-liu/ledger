@@ -1,4 +1,4 @@
-import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const plaidItems = sqliteTable("plaid_items", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -68,6 +68,17 @@ export const categoryRules = sqliteTable("category_rules", {
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
+
+/** Manually-tracked reward balances (credits, points, miles) that Plaid doesn't report. */
+export const rewardBalances = sqliteTable("reward_balances", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name"),
+  remainingAmount: real("remaining_amount"),
+  expirationDate: text("expiration_date"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+}, (table) => [index("idx_reward_balances_sort_order").on(table.sortOrder)]);
 
 /** Credit-card benefit templates (new tables only; never mutate Plaid tables). */
 export const cardProducts = sqliteTable("card_products", {
