@@ -48,6 +48,7 @@ export function CategoryEditor({ transactionId, transactionName, categoryPrimary
     matches: CategoryMatch[];
     loading: boolean;
     applying: boolean;
+    saveAsRule: boolean;
   } | null>(null);
 
   useEffect(() => {
@@ -89,7 +90,15 @@ export function CategoryEditor({ transactionId, transactionName, categoryPrimary
       if (!response.ok) throw new Error(payload.error ?? "Unable to save category");
       onSaved(transactionId, nextValue);
       const pattern = suggestMatchPattern(transactionName);
-      setPrompt({ sourceTransactionId: transactionId, categoryPrimary: nextValue, pattern, matches: [], loading: true, applying: false });
+      setPrompt({
+        sourceTransactionId: transactionId,
+        categoryPrimary: nextValue,
+        pattern,
+        matches: [],
+        loading: true,
+        applying: false,
+        saveAsRule: true,
+      });
       void runSearch(pattern);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to save category");
@@ -103,13 +112,25 @@ export function CategoryEditor({ transactionId, transactionName, categoryPrimary
     setPrompt((current) => (current ? { ...current, applying: true } : current));
     try {
       const transactionIds = prompt.matches.map((match) => match.transactionId);
-      const response = await fetch("/api/transactions/batch-category", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transactionIds, categoryPrimary: prompt.categoryPrimary }),
-      });
-      const payload = await response.json() as { error?: string };
-      if (!response.ok) throw new Error(payload.error ?? "Unable to update transactions");
+      if (prompt.saveAsRule) {
+        // Saving a rule backfills every transaction matching the pattern (not just the
+        // previewed list) and keeps applying automatically to future Plaid syncs.
+        const response = await fetch("/api/category-rules", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pattern: prompt.pattern, categoryPrimary: prompt.categoryPrimary }),
+        });
+        const payload = await response.json() as { error?: string };
+        if (!response.ok) throw new Error(payload.error ?? "Unable to save category rule");
+      } else {
+        const response = await fetch("/api/transactions/batch-category", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transactionIds, categoryPrimary: prompt.categoryPrimary }),
+        });
+        const payload = await response.json() as { error?: string };
+        if (!response.ok) throw new Error(payload.error ?? "Unable to update transactions");
+      }
       onBatchApplied(transactionIds, prompt.categoryPrimary);
       setPrompt(null);
     } catch (err) {
@@ -170,6 +191,17 @@ export function CategoryEditor({ transactionId, transactionName, categoryPrimary
                 ))}
                 {prompt.matches.length > 6 && <li className="category-batch-match-more">+{prompt.matches.length - 6} more</li>}
               </ul>
+              <label className="category-batch-rule-toggle">
+                <input
+                  type="checkbox"
+                  checked={prompt.saveAsRule}
+                  onChange={(event) => {
+                    const saveAsRule = event.target.checked;
+                    setPrompt((current) => (current ? { ...current, saveAsRule } : current));
+                  }}
+                />
+                Save as a rule so future transactions matching this text are categorized automatically
+              </label>
               <div className="category-batch-actions">
                 <button
                   type="button"

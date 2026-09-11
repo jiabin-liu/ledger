@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { applyCategoryRules } from "./category-rules";
 import { decryptAccessToken, plaidRequest } from "./plaid";
 
 type PlaidAccount = {
@@ -127,6 +128,7 @@ export async function syncItem(item: { itemId: string; accessTokenCiphertext: st
   let cursor = item.syncCursor ?? undefined;
   let hasMore = true;
   let addedCount = 0;
+  const touchedTransactionIds: string[] = [];
 
   // `/transactions/sync` only reports accounts that have associated transactions in that
   // response, so an account with no transaction activity yet would never be persisted.
@@ -145,6 +147,7 @@ export async function syncItem(item: { itemId: string; accessTokenCiphertext: st
 
     await upsertAccounts(db, item.itemId, response.accounts);
     await upsertTransactions(db, item.itemId, [...response.added, ...response.modified]);
+    for (const row of [...response.added, ...response.modified]) touchedTransactionIds.push(row.transaction_id);
     if (response.removed.length) {
       await db.batch(response.removed.map((row) =>
         db.prepare("DELETE FROM transactions WHERE transaction_id = ?").bind(row.transaction_id),
@@ -159,6 +162,8 @@ export async function syncItem(item: { itemId: string; accessTokenCiphertext: st
   await db.prepare(
     "UPDATE plaid_items SET sync_cursor = ?, status = 'active', updated_at = ? WHERE item_id = ?",
   ).bind(cursor ?? null, now(), item.itemId).run();
+
+  if (touchedTransactionIds.length) await applyCategoryRules(touchedTransactionIds);
 
   return addedCount;
 }

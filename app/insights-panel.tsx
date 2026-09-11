@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { CategoryRulesPanel } from "./category-rules-panel";
 
 type InsightsMode = "month" | "year" | "last12";
 
@@ -126,96 +127,99 @@ export function InsightsPanel() {
   const hasExclusions = excludedCategories.size > 0;
 
   return (
-    <section className="tab-content">
-      <div className="section-heading"><h2>Spending</h2><p>By category</p></div>
+    <>
+      <section className="tab-content">
+        <div className="section-heading"><h2>Spending</h2><p>By category</p></div>
 
-      <div className="insights-mode-tabs" role="tablist" aria-label="Time period">
-        {MODE_OPTIONS.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            role="tab"
-            aria-selected={mode === option.value}
-            className={mode === option.value ? "insights-mode-tab active" : "insights-mode-tab"}
-            onClick={() => setMode(option.value)}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-
-      {mode !== "last12" && (
-        <div className="insights-period-nav">
-          <button type="button" aria-label="Previous period" onClick={() => shiftPeriod(-1)}>
-            <ChevronLeft aria-hidden="true" />
-          </button>
-          <span>{summary ? periodLabel(summary) : "\u00A0"}</span>
-          <button type="button" aria-label="Next period" onClick={() => shiftPeriod(1)}>
-            <ChevronRight aria-hidden="true" />
-          </button>
+        <div className="insights-mode-tabs" role="tablist" aria-label="Time period">
+          {MODE_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              role="tab"
+              aria-selected={mode === option.value}
+              className={mode === option.value ? "insights-mode-tab active" : "insights-mode-tab"}
+              onClick={() => setMode(option.value)}
+            >
+              {option.label}
+            </button>
+          ))}
         </div>
-      )}
-      {mode === "last12" && summary && (
-        <div className="insights-period-nav insights-period-nav-static">
-          <span>{periodLabel(summary)}</span>
-        </div>
-      )}
 
-      {error && <div className="status-banner warning">{error}</div>}
-
-      {!error && (
-        <>
-          <div className="insights-summary-cards">
-            <div className="insights-summary-card spending">
-              <span>{hasExclusions ? "Spending (selected)" : "Total spending"}</span>
-              <strong>{loading || !summary ? "—" : money(includedTotal)}</strong>
-            </div>
-            <div className="insights-summary-card income">
-              <span>Total income</span>
-              <strong>{loading || !summary ? "—" : money(summary.totalIncomeMilliunits)}</strong>
-            </div>
+        {mode !== "last12" && (
+          <div className="insights-period-nav">
+            <button type="button" aria-label="Previous period" onClick={() => shiftPeriod(-1)}>
+              <ChevronLeft aria-hidden="true" />
+            </button>
+            <span>{summary ? periodLabel(summary) : " "}</span>
+            <button type="button" aria-label="Next period" onClick={() => shiftPeriod(1)}>
+              <ChevronRight aria-hidden="true" />
+            </button>
           </div>
+        )}
+        {mode === "last12" && summary && (
+          <div className="insights-period-nav insights-period-nav-static">
+            <span>{periodLabel(summary)}</span>
+          </div>
+        )}
 
-          {!loading && summary && summary.byCategory.length > 0 && (
-            <p className="insights-hint">Tap a category to include or exclude it from the total.</p>
-          )}
+        {error && <div className="status-banner warning">{error}</div>}
 
-          <div className="insights-category-list">
-            {loading && <p className="insights-empty">Loading…</p>}
-            {!loading && summary && summary.byCategory.length === 0 && (
-              <p className="insights-empty">No spending in this period.</p>
+        {!error && (
+          <>
+            <div className="insights-summary-cards">
+              <div className="insights-summary-card spending">
+                <span>{hasExclusions ? "Spending (selected)" : "Total spending"}</span>
+                <strong>{loading || !summary ? "—" : money(includedTotal)}</strong>
+              </div>
+              <div className="insights-summary-card income">
+                <span>Total income</span>
+                <strong>{loading || !summary ? "—" : money(summary.totalIncomeMilliunits)}</strong>
+              </div>
+            </div>
+
+            {!loading && summary && summary.byCategory.length > 0 && (
+              <p className="insights-hint">Tap a category to include or exclude it from the total.</p>
             )}
-            {!loading && summary && summary.byCategory.map((row) => {
-              const key = categoryKey(row.category);
-              const excluded = excludedCategories.has(key);
-              return (
-                <button
-                  type="button"
-                  className={excluded ? "insights-category-row excluded" : "insights-category-row"}
-                  key={key}
-                  onClick={() => toggleCategory(key)}
-                  aria-pressed={!excluded}
-                >
-                  <div className="insights-category-row-top">
-                    <span>{categoryLabel(row.category)}</span>
-                    <strong>{money(row.amountMilliunits)}</strong>
-                  </div>
-                  <div className="insights-category-bar-track">
-                    <div
-                      className="insights-category-bar-fill"
-                      style={{
-                        width: maxCategoryAmount > 0
-                          ? `${Math.max(4, (row.amountMilliunits / maxCategoryAmount) * 100)}%`
-                          : "0%",
-                      }}
-                    />
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </>
-      )}
-    </section>
+
+            <div className="insights-category-list">
+              {loading && <p className="insights-empty">Loading…</p>}
+              {!loading && summary && summary.byCategory.length === 0 && (
+                <p className="insights-empty">No spending in this period.</p>
+              )}
+              {!loading && summary && summary.byCategory.map((row) => {
+                const key = categoryKey(row.category);
+                const excluded = excludedCategories.has(key);
+                return (
+                  <button
+                    type="button"
+                    className={excluded ? "insights-category-row excluded" : "insights-category-row"}
+                    key={key}
+                    onClick={() => toggleCategory(key)}
+                    aria-pressed={!excluded}
+                  >
+                    <div className="insights-category-row-top">
+                      <span>{categoryLabel(row.category)}</span>
+                      <strong>{money(row.amountMilliunits)}</strong>
+                    </div>
+                    <div className="insights-category-bar-track">
+                      <div
+                        className="insights-category-bar-fill"
+                        style={{
+                          width: maxCategoryAmount > 0
+                            ? `${Math.max(4, (row.amountMilliunits / maxCategoryAmount) * 100)}%`
+                            : "0%",
+                        }}
+                      />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </section>
+      <CategoryRulesPanel />
+    </>
   );
 }

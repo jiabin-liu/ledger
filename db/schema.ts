@@ -59,6 +59,16 @@ export const transactions = sqliteTable("transactions", {
   index("idx_transactions_triage").on(table.triage),
 ]);
 
+/** User-defined categorization rules: substring match against name/merchant/original
+ * description, applied on every sync so new Plaid transactions inherit past corrections. */
+export const categoryRules = sqliteTable("category_rules", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  pattern: text("pattern").notNull(),
+  categoryPrimary: text("category_primary").notNull(),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
 /** Credit-card benefit templates (new tables only; never mutate Plaid tables). */
 export const cardProducts = sqliteTable("card_products", {
   id: integer("id").primaryKey({ autoIncrement: true }),
