@@ -332,6 +332,14 @@ html.ledger-detail-open .app-scroll {
 .insights-empty { color:var(--muted); font-size:.82rem; text-align:center; padding:2rem 0; }
 .insights-hint { margin:0 0 .8rem; color:var(--muted); font-size:.72rem; text-align:center; }
 
+.recurring-upcoming { margin-bottom:1.3rem; padding:.9rem; border:1px solid var(--line); border-radius:14px; background:var(--green-soft); }
+.recurring-upcoming-heading { margin:0 0 .6rem; font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:var(--green); }
+.recurring-upcoming-list { display:flex; flex-direction:column; gap:.55rem; }
+.recurring-upcoming-row { display:flex; align-items:center; gap:.6rem; }
+.recurring-upcoming-main { flex:1; min-width:0; display:flex; flex-direction:column; gap:.05rem; }
+.recurring-upcoming-label { font-size:.84rem; font-weight:640; color:var(--ink); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.merchant-avatar.small { width:32px; height:32px; border-radius:9px; font-size:.62rem; flex-shrink:0; }
+
 .recurring-summary-cards { margin-bottom:1rem; }
 .recurring-list { display:flex; flex-direction:column; gap:.6rem; }
 .recurring-group { border:1px solid var(--line); border-radius:14px; background:var(--panel); overflow:hidden; }

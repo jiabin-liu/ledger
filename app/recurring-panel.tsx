@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
 
 type RecurringCadence = "weekly" | "biweekly" | "monthly" | "quarterly" | "yearly";
@@ -89,6 +89,16 @@ export function RecurringPanel() {
 
   const totalMonthlyEquivalent = groups?.reduce((sum, group) => sum + group.monthlyEquivalentMilliunits, 0) ?? 0;
 
+  const upcoming = useMemo(() => {
+    if (!groups) return [];
+    const now = new Date();
+    const todayString = now.toISOString().slice(0, 10);
+    const in30DaysString = new Date(now.getTime() + 30 * 86_400_000).toISOString().slice(0, 10);
+    return groups
+      .filter((group) => !group.likelyEnded && group.nextExpectedDate >= todayString && group.nextExpectedDate <= in30DaysString)
+      .sort((a, b) => a.nextExpectedDate.localeCompare(b.nextExpectedDate));
+  }, [groups]);
+
   return (
     <section className="tab-content">
       <div className="section-heading"><h2>Recurring</h2><p>Subscriptions & bills</p></div>
@@ -97,6 +107,26 @@ export function RecurringPanel() {
 
       {!error && (
         <>
+          {upcoming.length > 0 && (
+            <div className="recurring-upcoming">
+              <h3 className="recurring-upcoming-heading">Due in the next 30 days</h3>
+              <div className="recurring-upcoming-list">
+                {upcoming.map((group) => (
+                  <div className="recurring-upcoming-row" key={group.key}>
+                    <div className="merchant-avatar small">
+                      {group.logoUrl ? <img src={group.logoUrl} alt="" /> : initials(group.label)}
+                    </div>
+                    <div className="recurring-upcoming-main">
+                      <span className="recurring-upcoming-label">{group.label}</span>
+                      <span className="transaction-account-line">Expected {formatDate(group.nextExpectedDate)}</span>
+                    </div>
+                    <strong className="amount">{money(group.lastAmountMilliunits)}</strong>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="insights-summary-cards recurring-summary-cards">
             <div className="insights-summary-card spending">
               <span>Est. monthly recurring</span>
