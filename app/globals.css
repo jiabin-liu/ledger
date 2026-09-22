@@ -332,6 +332,10 @@ html.ledger-detail-open .app-scroll {
 .insights-empty { color:var(--muted); font-size:.82rem; text-align:center; padding:2rem 0; }
 .insights-hint { margin:0 0 .8rem; color:var(--muted); font-size:.72rem; text-align:center; }
 
+.card-spend-select { width:100%; padding:.65rem .8rem; margin-bottom:1.2rem; border:1px solid var(--line); border-radius:10px; background:var(--panel); color:var(--ink); font-size:.86rem; font-weight:600; }
+.card-spend-summary-cards { margin-bottom:.7rem; }
+.card-spend-detail { text-align:left; }
+
 .recurring-upcoming { margin-bottom:1.3rem; padding:.9rem; border:1px solid var(--line); border-radius:14px; background:var(--green-soft); }
 .recurring-upcoming-heading { margin:0 0 .6rem; font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:var(--green); }
 .recurring-upcoming-list { display:flex; flex-direction:column; gap:.55rem; }
@@ -505,7 +509,7 @@ button.benefits-matrix-cell { cursor:pointer; }
   .benefits-draft-row,.benefits-window-grid { grid-template-columns:1fr 1fr; }
 }
 
-.bottom-tabs { position:fixed; left:50%; bottom:0; z-index:30; width:min(100%,760px); height:74px; padding:0 max(1.25rem,env(safe-area-inset-left)); padding-bottom:env(safe-area-inset-bottom); transform:translateX(-50%); display:grid; grid-template-columns:repeat(6,1fr); align-items:center; background:rgba(255,253,248,.96); backdrop-filter:blur(18px); border-top:1px solid var(--line); box-shadow:0 -8px 28px rgba(20,35,28,.06); }
+.bottom-tabs { position:fixed; left:50%; bottom:0; z-index:30; width:min(100%,760px); height:74px; padding:0 max(1.25rem,env(safe-area-inset-left)); padding-bottom:env(safe-area-inset-bottom); transform:translateX(-50%); display:grid; grid-template-columns:repeat(7,1fr); align-items:center; background:rgba(255,253,248,.96); backdrop-filter:blur(18px); border-top:1px solid var(--line); box-shadow:0 -8px 28px rgba(20,35,28,.06); }
 .bottom-tab { position:relative; height:100%; display:grid; place-items:center; border:0; border-radius:0; background:transparent; color:#89938e; text-decoration:none; }
 .bottom-tab.active { color:var(--green); }.bottom-tab.active::before { content:""; position:absolute; top:0; width:32px; height:3px; border-radius:0 0 3px 3px; background:var(--green); }
 .bottom-tab svg { width:23px; height:23px; stroke-width:1.8; }

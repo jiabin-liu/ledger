@@ -2,7 +2,8 @@
 
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode, type RefObject } from "react";
 import { flushSync } from "react-dom";
-import { ArrowLeft, Check, ChevronDown, Circle, Coins, CreditCard, Gift, GripVertical, HelpCircle, LayoutGrid, Link2, List, PieChart, Plus, RefreshCw, Repeat, Search, StickyNote, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, Circle, Coins, CreditCard, Gift, GripVertical, HelpCircle, LayoutGrid, Link2, List, PieChart, Plus, RefreshCw, Repeat, Search, StickyNote, Target, X } from "lucide-react";
+import { CardSpendPanel } from "./card-spend-panel";
 import { InsightsPanel } from "./insights-panel";
 import { RecurringPanel } from "./recurring-panel";
 import { RewardsPanel } from "./rewards-panel";
@@ -280,7 +281,7 @@ export function TransactionDashboard({
   useEffect(() => {
     const onPopState = (event: PopStateEvent) => {
       const params = new URLSearchParams(window.location.search);
-      const nextTab = ["accounts", "transactions", "benefits", "insights", "recurring", "rewards"].includes(params.get("tab") ?? "")
+      const nextTab = ["accounts", "transactions", "benefits", "insights", "recurring", "cardspend", "rewards"].includes(params.get("tab") ?? "")
         ? params.get("tab")!
         : "accounts";
       setTab(nextTab);
@@ -528,6 +529,8 @@ export function TransactionDashboard({
         ? "Spending"
         : tab === "recurring"
           ? "Recurring"
+        : tab === "cardspend"
+          ? "Card Spend"
         : tab === "rewards"
           ? "Rewards"
       : selectedAccount
@@ -947,7 +950,7 @@ export function TransactionDashboard({
       setSavingDisplayMask(false);
     }
   };
-  const goToTab = (nextTab: "accounts" | "transactions" | "benefits" | "insights" | "recurring" | "rewards") => {
+  const goToTab = (nextTab: "accounts" | "transactions" | "benefits" | "insights" | "recurring" | "cardspend" | "rewards") => {
     if (nextTab === tab && !selectedAccount && !selectedTransaction && !benefitsDetailOpen) return;
     blurActiveDetailField();
     if (selectedTransaction) flushDetailNote();
@@ -1558,6 +1561,7 @@ export function TransactionDashboard({
 
       {tab === "insights" && <InsightsPanel />}
       {tab === "recurring" && <RecurringPanel />}
+      {tab === "cardspend" && <CardSpendPanel creditAccounts={creditAccounts} />}
       {tab === "rewards" && <RewardsPanel />}
       </div>
 
@@ -1566,6 +1570,7 @@ export function TransactionDashboard({
         <button className={tab === "transactions" ? "bottom-tab active" : "bottom-tab"} type="button" onClick={() => goToTab("transactions")} aria-label="Transactions" title="Transactions"><List aria-hidden="true" /></button>
         <button className={tab === "insights" ? "bottom-tab active" : "bottom-tab"} type="button" onClick={() => goToTab("insights")} aria-label="Spending" title="Spending"><PieChart aria-hidden="true" /></button>
         <button className={tab === "recurring" ? "bottom-tab active" : "bottom-tab"} type="button" onClick={() => goToTab("recurring")} aria-label="Recurring" title="Recurring"><Repeat aria-hidden="true" /></button>
+        <button className={tab === "cardspend" ? "bottom-tab active" : "bottom-tab"} type="button" onClick={() => goToTab("cardspend")} aria-label="Card Spend" title="Card Spend"><Target aria-hidden="true" /></button>
         <button className={tab === "benefits" ? "bottom-tab active" : "bottom-tab"} type="button" onClick={() => goToTab("benefits")} aria-label="Benefits" title="Benefits"><Gift aria-hidden="true" /></button>
         <button className={tab === "rewards" ? "bottom-tab active" : "bottom-tab"} type="button" onClick={() => goToTab("rewards")} aria-label="Rewards" title="Rewards"><Coins aria-hidden="true" /></button>
       </nav>
