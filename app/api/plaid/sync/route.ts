@@ -10,7 +10,11 @@ export async function POST(request: Request) {
     // within the last 24h so opening the app repeatedly doesn't hammer Plaid. The manual
     // "Sync" button (no query param) always force-syncs every institution immediately.
     const auto = new URL(request.url).searchParams.get("auto") === "1";
-    const items = await getDb().select().from(plaidItems);
+    const allItems = await getDb().select().from(plaidItems);
+    // A "disconnected" item's access token has been revoked at Plaid (e.g. after an
+    // institution reconnect); syncing it would only fail and, left unguarded, abort the
+    // whole batch before other institutions get their turn.
+    const items = allItems.filter((item) => item.status !== "disconnected");
     const itemsToSync = auto
       ? items.filter((item) => {
         const lastSynced = new Date(item.updatedAt).getTime();

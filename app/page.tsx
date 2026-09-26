@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gte, isNull, lt, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import { accounts, plaidItems, transactions } from "../db/schema";
 import { ensurePeriodsForYear, listBenefitBundle } from "../lib/benefits";
@@ -153,6 +153,10 @@ export default async function Home({
         })
         .from(accounts)
         .leftJoin(plaidItems, eq(accounts.itemId, plaidItems.itemId))
+        // A "disconnected" item was intentionally revoked and replaced (e.g. an institution
+        // reconnect); keep its transaction history queryable but stop surfacing the stale
+        // account itself as something to view, sync, or pick for a card in the UI.
+        .where(or(isNull(plaidItems.status), ne(plaidItems.status, "disconnected")))
         .orderBy(asc(plaidItems.institutionName), asc(accounts.sortOrder), asc(accounts.name)),
       db
         .select({
@@ -163,7 +167,8 @@ export default async function Home({
           status: plaidItems.status,
           updatedAt: plaidItems.updatedAt,
         })
-        .from(plaidItems),
+        .from(plaidItems)
+        .where(ne(plaidItems.status, "disconnected")),
       db.select({ total: count() }).from(transactions).where(transactionFilter),
       db
         .selectDistinct({
